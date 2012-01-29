@@ -223,48 +223,130 @@ class WebGLExportLogic:
 <!-- WebGL Export for 3D Slicer4 powered by XTK -- http://goXTK.com -->
   <head>
     <title>WebGL Export</title>
-    <script type="text/javascript" src="http://goXTK.com/xtk.js"></script>
+    <script type="text/javascript" src="http://goXTK.com/xtk_nightly.js"></script>
     <script type="text/javascript">
       var run = function() {
-        var r = new X.renderer('r');
-        r.init();
-
+      
+        %s
 
 """
 
     # the html footer
     self.__footer = """
 
-        r.add(scene);
+        %s
 
-        r.camera().setPosition%s;
-
-        r.render();
       };
     </script>
   </head>
-  <body onload="run()">
-    <div id="r" style="background-color: %s; width: 100%%; height: 100%%;"></div>
+  <body style="margin:0px; padding:0px;" onload="run()">
+    %s
   </body>
 </html>
 """
 
-  def formatFooter( self, threeDIndex ):
+  def configureXrenderers( self ):
     """
-    Grab some Slicer environment values like the camera position etc.
+    Grab some Slicer environment values like the camera position etc. and configure the X.renderers
     """
-    # grab the current 3d view background color
-    threeDWidget = slicer.app.layoutManager().threeDWidget( threeDIndex )
-    threeDView = threeDWidget.threeDView()
-    bgColor = threeDView.backgroundColor.name()
+    init = "r%s = new X.renderer('r%s');" + '\n' + 'r%s.init();' + '\n'
+    configuredInit = ''
+    div = '<div id="r%s" style="background-color: %s; width: %s; height: %s;%s"></div>' + '\n'
+    configuredDiv = ''
+    render = '%sr%s.add(scene);' + '\n'
+    render += 'r%s.camera().setPosition%s;' + '\n'
+    render += 'r%s.camera().setUp%s;' + '\n'
+    render += 'r%s.render();%s' + '\n\n'
+    configuredRender = ''
 
-    # grab the current camera position
-    cameraNode = slicer.mrmlScene.GetNodeByID( 'vtkMRMLCameraNode' + str( threeDIndex + 1 ) )
-    camera = cameraNode.GetCamera()
-    cameraPosition = str( camera.GetPosition() )
+    # check the current layout
+    renderers = []
+
+
+    if slicer.app.layoutManager().layout == 15:
+      # dual 3d
+      renderers.append( 0 )
+      renderers.append( 1 )
+    elif slicer.app.layoutManager().layout == 19:
+      # triple 3d
+      renderers.append( 0 )
+      renderers.append( 1 )
+      renderers.append( 2 )
+    else:
+      # always take just the main 3d view
+      renderers.append( 0 )
+
+    threeDViews = slicer.app.layoutManager().threeDViewCount
+
+
+    for r in xrange( threeDViews ):
+      # grab the current 3d view background color
+      threeDWidget = slicer.app.layoutManager().threeDWidget( r )
+      threeDView = threeDWidget.threeDView()
+
+      if not threeDView.isVisible():
+        continue
+
+      mrmlViewNode = threeDView.mrmlViewNode()
+      bgColor = threeDView.backgroundColor.name() + ';'
+
+      # grab the current camera position and up vector
+      cameraNodes = slicer.util.getNodes( 'vtkMRMLCamera*' )
+      cameraNode = None
+
+      for c in cameraNodes.items():
+        cameraNode = c[1]
+        if cameraNode.GetActiveTag() == mrmlViewNode.GetID():
+          # found the cameraNode
+          break
+
+      if not cameraNode:
+        raise Exception( 'Something went terribly wrong..' )
+
+      camera = cameraNode.GetCamera()
+      cameraPosition = str( camera.GetPosition() )
+      cameraUp = str( camera.GetViewUp() )
+
+      width = '99%'
+      height = '99%'
+      float = 'margin:2px;'
+      begin = '';
+      end = '';
+
+      if ( len( renderers ) == 2 ):
+        # dual 3d
+        width = '49%'
+        if threeDWidget.x == 0:
+          # this is the left one
+          float += 'float:left;'
+        else:
+          begin = 'r0.onShowtime = function() {'
+          end = '}'
+          float += 'float:right;'
+      elif ( len( renderers ) == 3 ):
+        height = '49%'
+        # triple 3d
+        if r != 0:
+          # this is the second row
+          width = '49%'
+          if threeDWidget.x == 0:
+            # this is the left one
+            begin = 'r0.onShowtime = function() {'
+            float += 'float:left;'
+          else:
+            end = '};'
+            float += 'float:right;'
+
+      configuredInit += init % ( r, r, r )
+      configuredRender += render % ( begin, r, r, cameraPosition, r, cameraUp, r, end )
+      configuredDiv += div % ( r, bgColor, width, height, float )
+
 
     # .. and configure the X.renderer
-    return self.__footer % ( cameraPosition, bgColor )
+    header = self.__header % ( configuredInit )
+    footer = self.__footer % ( configuredRender, configuredDiv )
+
+    return [header, footer]
 
 
   def export( self, threeDIndex=0 ):
@@ -285,9 +367,10 @@ class WebGLExportLogic:
 
         self.parseNode( node )
 
-    output = self.__header
+    [header, footer] = self.configureXrenderers()
+    output = header
     output += self.createXtree( "scene" )
-    output += self.formatFooter( threeDIndex )
+    output += footer
 
     return output
 
@@ -377,7 +460,7 @@ class Slicelet( object ):
   This class provides common wrapper functionality used by all slicer modlets.
   """
   # TODO: put this in a SliceletLib
-  # TODO: parse command line arge
+  # TODO: parse command line args
 
 
   def __init__( self, widgetClass=None ):
