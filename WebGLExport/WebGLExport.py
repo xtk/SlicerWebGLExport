@@ -1,6 +1,16 @@
 from __main__ import vtk, qt, ctk, slicer
 
+import os
+import shutil
+import time
 import uuid
+import webbrowser
+
+
+# webserver support for easy display of local WebGL content
+import SimpleHTTPServer
+import SocketServer
+import multiprocessing as m
 
 # this module uses the following from http://www.quesucede.com/page/show/id/python_3_tree_implementation
 #
@@ -153,7 +163,9 @@ class WebGLExport:
     parent.categories = ["Surface Models"]
     parent.contributor = "Daniel Haehn"
     parent.helpText = """
-Grab a beer!
+Export the models in the 3D Slicer scene to WebGL. The WebGL visualization is powered by XTK (http://goXTK.com).
+
+More information: http://github.com/xtk/SlicerWebGLExport
     """
     parent.acknowledgementText = """
     Flex, dude!
@@ -173,11 +185,54 @@ class WebGLExportWidget:
     else:
       self.parent = parent
     self.logic = WebGLExportLogic()
+    self.__httpd = None
+    self.__port = 3456
+    self.__p = None
     if not parent:
       self.setup()
       self.parent.show()
 
+  def __del__( self ):
+    # if we have a httpd server running, kill it
+    if self.__httpd:
+      self.__p.terminate()
+
   def setup( self ):
+
+    # settings
+    settingsButton = ctk.ctkCollapsibleButton()
+    settingsButton.text = "Settings"
+    settingsButton.collapsed = False
+    self.parent.layout().addWidget( settingsButton )
+
+    settingsLayout = qt.QFormLayout( settingsButton )
+
+    self.__dirButton = ctk.ctkDirectoryButton()
+    settingsLayout.addRow( "Output directory:", self.__dirButton )
+
+    self.__viewCheckbox = qt.QCheckBox()
+    self.__viewCheckbox.setChecked( True )
+    settingsLayout.addRow( "View after export:", self.__viewCheckbox )
+
+    # advanced
+    advancedButton = ctk.ctkCollapsibleButton()
+    advancedButton.text = "Advanced"
+    advancedButton.collapsed = True
+    self.parent.layout().addWidget( advancedButton )
+
+    advancedLayout = qt.QFormLayout( advancedButton )
+
+    self.__copyCheckbox = qt.QCheckBox()
+    self.__copyCheckbox.setChecked( True )
+    advancedLayout.addRow( "Copy models to output directory:", self.__copyCheckbox )
+
+    self.__captionCombobox = qt.QComboBox()
+    self.__captionCombobox.addItems( ['None', 'Model name', 'Hierarchy name'] )
+    advancedLayout.addRow( "Set captions from:", self.__captionCombobox )
+
+    self.__serverCheckbox = qt.QCheckBox()
+    self.__serverCheckbox.setChecked( True )
+    advancedLayout.addRow( "Run internal web server:", self.__serverCheckbox )
 
     # Apply button
     self.__exportButton = qt.QPushButton( "Export to WebGL" )
@@ -198,12 +253,52 @@ class WebGLExportWidget:
     self.__exportButton.text = "Working..."
     slicer.app.processEvents()
 
-    output = self.logic.export()
+    outputDir = os.path.abspath( self.__dirButton.directory )
+    outputFile = os.path.join( outputDir, 'index.html' )
 
-    with open( '/Users/d/Desktop/test.html', 'w' ) as f:
+    try:
+      output = self.logic.export( self.__captionCombobox.currentIndex, self.__copyCheckbox.checked, outputDir )
+    except Exception as e:
+      # maybe the scene was not saved?
+      qt.QMessageBox.warning( None, 'Error', 'Please make sure the scene was saved before attempting to export to WebGL!' )
+      self.__exportButton.text = "Export to WebGL"
+      return
+
+    if self.__serverCheckbox.checked:
+      # start server
+      os.chdir( outputDir )
+
+      # if we have already a httpd running, kill it now
+      # it will likely leave an orphaned process but since we mark it killed,
+      # slicer will destroy it on exit
+      if self.__httpd:
+        self.__p.terminate()
+        # increase the port
+        self.__port += 1
+
+      # we need to break out of the pythonQt context here to make multiprocessing work
+      sys.stdin = sys.__stdin__
+      sys.stdout = sys.__stdout__
+      sys.stderr = sys.__stderr__
+
+      self.__handler = SimpleHTTPServer.SimpleHTTPRequestHandler
+      self.__httpd = SocketServer.TCPServer( ( "", self.__port ), self.__handler )
+      self.__p = m.Process( target=self.__httpd.serve_forever )
+      self.__p.start()
+
+      url = 'http://localhost:' + str( self.__port ) + '/index.html'
+    else:
+      # no server
+      url = outputFile
+
+    with open( outputFile, 'w' ) as f:
       f.write( output )
 
     self.__exportButton.text = "Export to WebGL"
+
+    if self.__viewCheckbox.checked:
+      time.sleep( 1 )
+      webbrowser.open_new_tab( url )
 
 
 
@@ -227,20 +322,20 @@ class WebGLExportLogic:
     <script type="text/javascript">
       var run = function() {
       
-        %s
+%s
 
 """
 
     # the html footer
     self.__footer = """
 
-        %s
+%s
 
       };
     </script>
   </head>
   <body style="margin:0px; padding:0px;" onload="run()">
-    %s
+%s
   </body>
 </html>
 """
@@ -249,14 +344,14 @@ class WebGLExportLogic:
     """
     Grab some Slicer environment values like the camera position etc. and configure the X.renderers
     """
-    init = "r%s = new X.renderer('r%s');" + '\n' + 'r%s.init();' + '\n'
+    init = ' ' * 8 + "r%s = new X.renderer('r%s');" + '\n' + ' ' * 8 + 'r%s.init();' + '\n'
     configuredInit = ''
-    div = '<div id="r%s" style="background-color: %s; width: %s; height: %s;%s"></div>' + '\n'
+    div = ' ' * 8 + '<div id="r%s" style="background-color: %s; width: %s; height: %s;%s"></div>' + '\n'
     configuredDiv = ''
-    render = '%sr%s.add(scene);' + '\n'
-    render += 'r%s.camera().setPosition%s;' + '\n'
-    render += 'r%s.camera().setUp%s;' + '\n'
-    render += 'r%s.render();%s' + '\n\n'
+    render = ' ' * 8 + '%sr%s.add(scene);' + '\n'
+    render += ' ' * 8 + 'r%s.camera().setPosition%s;' + '\n'
+    render += ' ' * 8 + 'r%s.camera().setUp%s;' + '\n'
+    render += ' ' * 8 + 'r%s.render();%s' + '\n\n'
     configuredRender = ''
 
     # check the current layout
@@ -307,35 +402,35 @@ class WebGLExportLogic:
       cameraPosition = str( camera.GetPosition() )
       cameraUp = str( camera.GetViewUp() )
 
-      width = '99%'
-      height = '99%'
-      float = 'margin:2px;'
+      width = '100%'
+      height = '100%'
+      float = ''
       begin = '';
       end = '';
 
       if ( len( renderers ) == 2 ):
         # dual 3d
-        width = '49%'
+        width = '49.35%'
         if threeDWidget.x == 0:
           # this is the left one
-          float += 'float:left;'
+          float += 'position:absolute;left:0;bottom:0;'
         else:
           begin = 'r0.onShowtime = function() {'
           end = '}'
-          float += 'float:right;'
+          float += 'position:absolute;right:0;bottom:0;'
       elif ( len( renderers ) == 3 ):
-        height = '49%'
+        height = '49.25%'
         # triple 3d
         if r != 0:
           # this is the second row
-          width = '49%'
+          width = '49.35%'
           if threeDWidget.x == 0:
             # this is the left one
-            begin = 'r0.onShowtime = function() {'
-            float += 'float:left;'
+            begin = ' ' * 8 + 'r0.onShowtime = function() {'
+            float += 'position:absolute;left:0;bottom:0;'
           else:
-            end = '};'
-            float += 'float:right;'
+            end = ' ' * 8 + '};'
+            float += 'position:absolute;right:0;bottom:0;'
 
       configuredInit += init % ( r, r, r )
       configuredRender += render % ( begin, r, r, cameraPosition, r, cameraUp, r, end )
@@ -349,7 +444,7 @@ class WebGLExportLogic:
     return [header, footer]
 
 
-  def export( self, threeDIndex=0 ):
+  def export( self, captionMode, copyFiles, outputDir ):
     """
     Run through the mrml scene and create an XTK tree based on vtkMRMLModelHierarchyNodes and vtkMRMLModelNodes
     """
@@ -357,6 +452,12 @@ class WebGLExportLogic:
     nodes = scene.GetNumberOfNodes()
 
     self.__nodes = {}
+
+    # 1 for model name, 2 for parent name
+    self.__captionMode = captionMode
+    # TRUE if we shall copy the files to the outputDir
+    self.__copyFiles = copyFiles
+    self.__outputDir = outputDir
 
     self.__tree = Tree()
     self.__tree.create_node( "Scene", "scene" )
@@ -432,16 +533,38 @@ class WebGLExportLogic:
 
         # grab some properties
         s = n.GetStorageNode()
+        if not s:
+          # error
+          raise Exception( 'Scene not saved!' )
+
         file = s.GetFileName()
+        if not file:
+          # error
+          raise Exception( 'Scene not saved!' )
+
         d = n.GetDisplayNode()
         color = str( d.GetColor() )
         opacity = str( d.GetOpacity() )
         visible = str( bool( d.GetVisibility() ) ).lower()
 
+        if self.__copyFiles:
+          fileName = os.path.split( file )[1]
+          shutil.copy( file, os.path.join( self.__outputDir, fileName ) )
+          file = fileName
+
         output += ' ' * 8 + mrmlId + '.load(\'' + file + '\');\n'
         output += ' ' * 8 + mrmlId + '.setColor' + color + ';\n'
         output += ' ' * 8 + mrmlId + '.setOpacity(' + opacity + ');\n'
         output += ' ' * 8 + mrmlId + '.setVisible(' + visible + ');\n'
+
+        if self.__captionMode == 1:
+          # From Model Name
+          output += ' ' * 8 + mrmlId + '.setCaption(\'' + n.GetName() + '\');\n'
+        elif self.__captionMode == 2:
+          # From Parent
+          parentNode = slicer.util.getNode( parent )
+          if parentNode:
+            output += ' ' * 8 + mrmlId + '.setCaption(\'' + parentNode.GetName() + '\');\n'
 
       output += ' ' * 8 + parent + '.children().push(' + mrmlId + ');\n\n'
 
