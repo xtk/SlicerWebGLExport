@@ -8,6 +8,7 @@ import webbrowser
 
 
 # webserver support for easy display of local WebGL content
+import socket
 import SimpleHTTPServer
 import SocketServer
 import multiprocessing as m
@@ -163,9 +164,11 @@ class WebGLExport:
     parent.categories = ["Surface Models"]
     parent.contributor = "Daniel Haehn"
     parent.helpText = """
-Export the models in the 3D Slicer scene to WebGL. The WebGL visualization is powered by XTK (http://goXTK.com).
-
-More information: http://github.com/xtk/SlicerWebGLExport
+Export the models in the 3D Slicer scene to WebGL. The WebGL visualization is powered by XTK (<a href='http://goXTK.com'>http://goXTK.com</a>).
+<br><br>
+Currently color, visibility and opacity of individual models are supported.
+<br><br>
+More information: <a href='http://github.com/xtk/SlicerWebGLExport'>http://github.com/xtk/SlicerWebGLExport</a>
     """
     parent.acknowledgementText = """
     Flex, dude!
@@ -228,6 +231,7 @@ class WebGLExportWidget:
 
     self.__captionCombobox = qt.QComboBox()
     self.__captionCombobox.addItems( ['None', 'Model name', 'Hierarchy name'] )
+    self.__captionCombobox.currentIndex = 1 # Model name by default
     advancedLayout.addRow( "Set captions from:", self.__captionCombobox )
 
     self.__serverCheckbox = qt.QCheckBox()
@@ -275,6 +279,20 @@ class WebGLExportWidget:
         self.__p.terminate()
         # increase the port
         self.__port += 1
+
+      # check first if the port is available (since we open it as a new process we can not check later)
+      portFree = False
+      while not portFree:
+        try:
+          s = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+          s.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
+          s.bind( ( "", self.__port ) )
+        except socket.error, e:
+          portFree = False
+          self.__port += 1
+        finally:
+          s.close()
+          portFree = True
 
       # we need to break out of the pythonQt context here to make multiprocessing work
       sys.stdin = sys.__stdin__
