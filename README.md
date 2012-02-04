@@ -7,6 +7,7 @@ This module exports the models in a 3D Slicer 4 scene to an interactive webpage 
 * replication of the model hierarchy tree
 * create tooltips (captions) for the exported models based on name or hierarchy name
 * support of threeDView settings: camera, background, dual 3D layout, triple 3D layout
+* integrated webserver to quickly view the exported scene
 
 ### Examples
 <img src="http://xtk.github.com/slicer/abdominalatlas_small.png" alt="abdominal_atlas" title="The SPL Abdominal Atlas - left: in 3D Slicer - right: exported in Google Chrome">
@@ -19,6 +20,8 @@ Please use the 3D Slicer Extension Manager (3D Slicer -> View -> Extension Manag
 Click <i>Next</i> on the first page and select <i>WebGLExport</i> on the second page. Hit <i>Download & Install</i>.
 
 After installation, the <i>WebGLExport</i> module shows up in the category <b>Surface models</b>.
+
+<b>Browser support</b>: <a href='http://wiki.goxtk.com/index.php/X:Browsers' target=_blank>http://wiki.goxtk.com/index.php/X:Browsers</a>
 
 ### More information... ###
 ...regarding XTK and how to contribute is available at <a href="http://goXTK.com" target="_blank">http://goXTK.com</a>.
