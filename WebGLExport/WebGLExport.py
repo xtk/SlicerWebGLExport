@@ -161,8 +161,8 @@ class Tree:
 class WebGLExport:
   def __init__( self, parent ):
     parent.title = "WebGL Export"
-    parent.categories = ["Surface Models"]
-    parent.contributor = "Daniel Haehn"
+    parent.categories = ["Work in progress"]
+    parent.contributors = ["Daniel Haehn"]
     parent.helpText = """
 Export the models in the 3D Slicer scene to WebGL. The WebGL visualization is powered by XTK (<a href='http://goXTK.com'>http://goXTK.com</a>).
 <br><br>
@@ -339,7 +339,7 @@ class WebGLExportLogic:
     <script type="text/javascript" src="http://goXTK.com/xtk_nightly.js"></script>
     <script type="text/javascript">
       var run = function() {
-      
+
 %s
 
 """
