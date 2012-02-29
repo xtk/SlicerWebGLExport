@@ -6,12 +6,18 @@ import time
 import uuid
 import webbrowser
 
+useWebserver = True
 
-# webserver support for easy display of local WebGL content
-import socket
-import SimpleHTTPServer
-import SocketServer
-import multiprocessing as m
+try:
+  # webserver support for easy display of local WebGL content
+  # on Windows it might not work, so catch any exceptions
+  import socket
+  import SimpleHTTPServer
+  import SocketServer
+  import multiprocessing as m
+except:
+  useWebserver = False  
+
 
 # this module uses the following from http://www.quesucede.com/page/show/id/python_3_tree_implementation
 #
@@ -161,7 +167,7 @@ class Tree:
 class WebGLExport:
   def __init__( self, parent ):
     parent.title = "WebGL Export"
-    parent.categories = ["Work in progress"]
+    parent.categories = ["Work in Progress"]
     parent.contributors = ["Daniel Haehn"]
     parent.helpText = """
 Export the models in the 3D Slicer scene to WebGL. The WebGL visualization is powered by XTK (<a href='http://goXTK.com'>http://goXTK.com</a>).
@@ -235,7 +241,9 @@ class WebGLExportWidget:
     advancedLayout.addRow( "Set captions from:", self.__captionCombobox )
 
     self.__serverCheckbox = qt.QCheckBox()
-    self.__serverCheckbox.setChecked( True )
+    self.__serverCheckbox.setChecked( useWebserver )
+    if not useWebserver:
+      self.__serverCheckbox.setEnabled( False )
     advancedLayout.addRow( "Run internal web server:", self.__serverCheckbox )
 
     # Apply button
@@ -268,7 +276,7 @@ class WebGLExportWidget:
       self.__exportButton.text = "Export to WebGL"
       return
 
-    if self.__serverCheckbox.checked:
+    if self.__serverCheckbox.checked and useWebserver:
       # start server
       os.chdir( outputDir )
 
