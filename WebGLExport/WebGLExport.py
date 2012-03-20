@@ -1,5 +1,6 @@
 from __main__ import vtk, qt, ctk, slicer
 
+import sys
 import os
 import shutil
 import time
