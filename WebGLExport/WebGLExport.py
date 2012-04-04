@@ -304,6 +304,7 @@ class WebGLExportWidget:
           portFree = True
 
       # we need to break out of the pythonQt context here to make multiprocessing work
+      import sys
       sys.stdin = sys.__stdin__
       sys.stdout = sys.__stdout__
       sys.stderr = sys.__stderr__
@@ -345,7 +346,7 @@ class WebGLExportLogic:
 <!-- WebGL Export for 3D Slicer4 powered by XTK -- http://goXTK.com -->
   <head>
     <title>WebGL Export</title>
-    <script type="text/javascript" src="http://goXTK.com/xtk_nightly.js"></script>
+    <script type="text/javascript" src="http://get.goXTK.com/xtk.js"></script>
     <script type="text/javascript">
       var run = function() {
 
