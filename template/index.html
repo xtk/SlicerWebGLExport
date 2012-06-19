@@ -1,0 +1,362 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+<title>Fixed Navigation - Codrops</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+<link rel="stylesheet"
+	href="http://code.jquery.com/ui/1.7.3/themes/ui-darkness/jquery-ui.css"
+	type="text/css" charset="utf-8" />
+
+<script type="text/javascript"
+	src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+<script type="text/javascript"
+	src="http://code.jquery.com/ui/1.8.21/jquery-ui.min.js"></script>
+<script type="text/javascript" src="http://get.goXTK.com/xtk_edge.js"></script>
+
+<script type="text/javascript">
+  // script snippet for the menu animation
+  jQuery(function() {
+
+    jQuery('#navigation .menu').stop().animate({
+      'marginLeft': '-195px'
+    }, 1000);
+    
+    jQuery('#navigation > li').hover(function() {
+
+      jQuery('.menu', jQuery(this)).stop().animate({
+        'marginLeft': '-2px'
+      }, 200);
+    }, function() {
+
+      jQuery('.menu', jQuery(this)).stop().animate({
+        'marginLeft': '-195px'
+      }, 200);
+    });
+    
+    // create the 2d sliders
+    jQuery("#yellow_slider").slider();
+    jQuery("#red_slider").slider();
+    jQuery("#green_slider").slider();
+    
+
+  });
+  
+  jQuery(document)
+      .ready(
+          function() {
+
+            //
+            // The X Toolkit code
+            //
+            
+            threeD = new X.renderer3D();
+            threeD.container = '3d';
+            threeD.init();
+            
+
+            //
+            // create the 2D renderers
+            // .. for the X orientation
+            sliceX = new X.renderer2D();
+            sliceX.container = 'sliceX';
+            sliceX.orientation = 'X';
+            sliceX.init();
+            
+            sliceY = new X.renderer2D();
+            sliceY.container = 'sliceY';
+            sliceY.orientation = 'Y';
+            sliceY.init();
+            
+            sliceZ = new X.renderer2D();
+            sliceZ.container = 'sliceZ';
+            sliceZ.orientation = 'Z';
+            sliceZ.init();
+            
+            //
+            // THE VOLUME DATA
+            //
+            // create a X.volume
+            volume = new X.volume();
+            // .. and attach the single-file dicom in .NRRD format
+            // this works with gzip/gz/raw encoded NRRD files but XTK also supports other
+            // formats like MGH/MGZ
+            volume.file = 'http://x.babymri.org/?vol.nrrd';
+            // we also attach a label map to show segmentations on a slice-by-slice base
+            volume.labelmap.file = 'http://x.babymri.org/?seg.nrrd';
+            // .. and use a color table to map the label map values to colors
+            volume.labelmap.colortable.file = 'http://x.babymri.org/?genericanatomy.txt';
+            
+            // add the volume in the main renderer
+            // we choose the sliceX here, since this should work also on
+            // non-webGL-friendly devices like Safari on iOS
+            sliceX.add(volume);
+            
+            //
+            // LINK THE RENDERERS
+            //
+            // link the 2d renderers to the 3d one by setting the onScroll
+            // method. this means, once you scroll in 2d, it upates 3d as well
+            var _updateThreeD = function() {
+
+              // only if we support webgl, update the 3d renderer
+              volume.modified();
+              threeD.render();
+              
+              // update the jquery sliders
+              jQuery("#yellow_slider").slider("option", "value", volume.indexX);
+              jQuery("#red_slider").slider("option", "value", volume.indexY);
+              jQuery("#green_slider").slider("option", "value", volume.indexZ);
+              
+            };
+            sliceX.onScroll = _updateThreeD;
+            sliceY.onScroll = _updateThreeD;
+            sliceZ.onScroll = _updateThreeD;
+            
+
+            // start the loading/rendering
+            sliceX.render();
+            
+            sliceX.onShowtime = function() {
+
+              threeD.add(volume);
+              sliceY.add(volume);
+              sliceZ.add(volume);
+              
+              threeD.render();
+              sliceY.render();
+              sliceZ.render();
+              
+
+              jQuery("#yellow_slider").slider("option", "value", volume.indexX);
+              jQuery("#yellow_slider").slider("option", "max",
+                  volume.dimensions[0] - 1);
+              jQuery("#yellow_slider .ui-slider-handle").unbind('keydown');
+              jQuery("#yellow_slider").bind("slide", function(event, ui) {
+
+                volume.indexX = ui.value;
+                volume.modified();
+                threeD.render();
+                sliceX.render();
+                sliceY.render();
+                sliceZ.render();
+              });
+              
+              jQuery("#red_slider").slider("option", "value", volume.indexY);
+              jQuery("#red_slider").slider("option", "max",
+                  volume.dimensions[1] - 1);
+              jQuery("#red_slider .ui-slider-handle").unbind('keydown');
+              jQuery("#red_slider").bind("slide", function(event, ui) {
+
+                volume.indexY = ui.value;
+                volume.modified();
+                threeD.render();
+                sliceX.render();
+                sliceY.render();
+                sliceZ.render();
+              });
+              
+              jQuery("#green_slider").slider("option", "value", volume.indexZ);
+              jQuery("#green_slider").slider("option", "max",
+                  volume.dimensions[2] - 1);
+              jQuery("#green_slider .ui-slider-handle").unbind('keydown');
+              jQuery("#green_slider").bind("slide", function(event, ui) {
+
+                volume.indexZ = ui.value;
+                volume.modified();
+                threeD.render();
+                sliceX.render();
+                sliceY.render();
+                sliceZ.render();
+              });
+              
+              jQuery("#threshold-volume").slider({
+                min: volume.min,
+                max: volume.max,
+                range: true,
+                values: [volume.lowerThreshold, volume.upperThreshold],
+                slide: function(event, ui) {
+
+                  volume.lowerThreshold = ui.values[0];
+                  volume.upperThreshold = ui.values[1];
+                  volume.modified();
+                  threeD.render();
+                  sliceX.render();
+                  sliceY.render();
+                  sliceZ.render();
+                  
+                }
+              
+              });
+              jQuery("#threshold-volume").css('width', '160px');
+              
+              jQuery("#opacity-volume").slider({
+                min: 0,
+                max: 100,
+                value: 100,
+                slide: function(event, ui) {
+
+                  volume.opacity = ui.value/100;
+                  volume.modified();
+                  threeD.render();
+                  
+                }
+              
+              });
+              jQuery("#opacity-volume").css('width', '160px');
+                            
+
+              jQuery("#volumerendering").button();
+              jQuery("#volumerendering").css('font-size', '10px');
+              jQuery('#volumerendering').click(function() {
+                
+                var _checked = jQuery('#volumerendering').is(':checked');
+                
+                volume.volumeRendering = _checked;
+                volume.modified();
+                threeD.render();
+                
+              });
+              
+              
+              // customize slider look and feeld
+              jQuery('.ui-slider').height(5);
+              jQuery('.ui-slider-handle').height(10);
+              jQuery('.ui-slider-handle').width(10);
+              //jQuery('.ui-slider-handle').css('margin-top', '2.5px');
+              jQuery('.ui-widget').css('font-size', '10px');
+              jQuery('.ui-widget').css('letter-spacing', '1px');
+              jQuery('.ui-corner-all').css('-moz-border-radius', '2px');
+              jQuery('.ui-corner-all').css('-webkit-border-radius','2px');
+              
+
+
+            };
+            
+          })
+</script>
+
+<style>
+ul#navigation {
+	position: fixed;
+	margin: 0px;
+	padding: 0px;
+	top: 50px;
+	left: 0px;
+	list-style: none;
+	z-index: 9999;
+}
+
+ul#navigation li {
+	width: 100px;
+}
+
+ul#navigation li .menu {
+	display: block;
+	margin-left: -195px;
+	width: 200px;
+	height: 150px;
+	background-color: #000;
+	background-repeat: no-repeat;
+	background-position: center center;
+	border: 1px solid #AFAFAF;
+	-moz-border-radius: 0px 2px 2px 0px;
+	-webkit-border-bottom-right-radius: 2px;
+	-webkit-border-top-right-radius: 2px;
+	-khtml-border-bottom-right-radius: 2px;
+	-khtml-border-top-right-radius: 2px;
+	/*-moz-box-shadow: 0px 4px 3px #000;
+    -webkit-box-shadow: 0px 4px 3px #000;
+    */
+	opacity: 0.6;
+	filter: progid:DXImageTransform.Microsoft.Alpha(opacity=60 );
+	margin-left: -195px;
+}
+
+body {
+	background: #000;
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #fff;
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	overflow: hidden !important;
+	margin: 0;
+}
+
+#yellow_slider {
+	margin-top: 2px;
+	background: yellow;
+}
+
+#red_slider {
+	margin-top: 2px;
+	background: red;
+}
+
+#green_slider {
+	margin-top: 2px;
+	background: green;
+}
+
+.caption {
+	float: right;
+	position: relative;
+	right: 0px;
+	width: 10px;
+	height: 50px;
+	margin-top: 0px;
+	font-size: smaller;
+	/*-moz-transform: rotate(90deg);  /* FF3.5+ */
+	/* -o-transform: rotate(90deg);  /* Opera 10.5 */
+	-webkit-transform: rotate(90deg);
+	margin-top: 0px; /* Saf3.1+, Chrome */
+}
+
+.label {
+	letter-spacing: 1px;
+	font-size: x-small;
+}
+
+.content {
+	padding-left: 20px;
+	line-height: 20px;
+}
+</style>
+</head>
+<body>
+	<ul id="navigation">
+		<li class="volume"><a class='menu'>
+				<div class="content">
+					<input type="checkbox" id="volumerendering" /><label
+						for="volumerendering">VOLUMERENDERING</label>
+
+					<div class="label">THRESHOLD</div>
+					<div id="threshold-volume"></div>
+					
+          <div class="label">OPACITY</div>
+          <div id="opacity-volume"></div>					
+					
+				</div>
+				<div class="caption">VOLUME</div> </a></li>
+		<li class="mesh"><a class='menu'><div class="caption">MESH</div>
+		</a></li>
+		<li class="fibers"><a class='menu'><div class="caption">FIBERS</div>
+		</a> </span></li>
+	</ul>
+	<div id="3d"
+		style="background-color: #000; width: 80%; height: 100%; position: absolute; right: 20%; left: 0%; bottom: 0%; top: 0%;"></div>
+	<div id="sliceX"
+		style="border-left: thin solid #666; background-color: #000; width: 20%; height: 33.3%; position: absolute; right: 0%; top: 0%;">
+		<div id="yellow_slider"></div>
+	</div>
+	<div id="sliceY"
+		style="border-left: thin solid #666; background-color: #000; width: 20%; height: 33.3%; position: absolute; right: 0%; top: 33%;">
+		<div id="red_slider"></div>
+	</div>
+	<div id="sliceZ"
+		style="border-left: thin solid #666; background-color: #000; width: 20%; height: 33.3%; position: absolute; right: 0%; top: 66%;">
+		<div id="green_slider"></div>
+	</div>
+</body>
+</html>
