@@ -76,7 +76,26 @@
       // You can insert your code here
       }
     });
-  });
+
+    jQuery("#labelmapname").change(function() {
+      //alert(jQuery(this).val());
+      // similar to sliceDrop
+     //if(jQuery(this).val()=="None"){
+        //volume.labelmap.visibility = false;
+        //volume.modified();
+	//threeD.render();
+      //}
+      //if None hide it
+      // else load by name
+      // no button to be updated
+    });
+    
+    jQuery("#meshname").change(function() {
+     // alert(jQuery(this).val());
+    // reset all buttons with color, opacity, etc.
+    });
+
+});
   
   jQuery(document)
       .ready(
@@ -410,9 +429,9 @@ body {
                                         <div id="opacity-volume"></div>					
                                         
                                         <div class="label">LABEL NAME
-					<select id="labelmap">
-                                        <option value="1">Default</option>
-	                                <option value="2">None</option>
+					<select id="labelmapname">
+                                        <option value="Default">Default</option>
+	                                <option value="None">None</option>
 	                                </select>
 					</div>
                                         <div class="label">LABEL OPACITY</div>
@@ -426,8 +445,8 @@ body {
 					<input type="checkbox" id="meshpin"/><label for="meshpin">PIN</label>
                                         <div class="label">NAME
 					<select id="meshname">
-                                        <option value="1">left</option>
-	                                <option value="2">right</option>
+                                        <option value="left.vtk">left</option>
+	                                <option value="right.vtk">right</option>
 	                                </select>
 					</div>
 					
