@@ -74,6 +74,7 @@
       show_color_on_border : true,
       callback_on_ok : function() {
       // You can insert your code here
+      alert(jQuery("#meshname").val());
       }
     });
 
@@ -90,7 +91,7 @@
       // no button to be updated
     });
     
-    jQuery("#meshname").change(function() {
+    jQuery("#scalarname").change(function() {
      // alert(jQuery(this).val());
     // reset all buttons with color, opacity, etc.
     });
@@ -167,6 +168,23 @@
             sliceX.onScroll = _updateThreeD;
             sliceY.onScroll = _updateThreeD;
             sliceZ.onScroll = _updateThreeD;
+            
+           // load 2 meshes
+	   var mesh1 = new X.mesh();
+	   mesh1.file = 'http://x.babymri.org/?avf.vtk';
+	   mesh1.color = [0.7, 0, 0];
+	   // and also set the visibility to false, since we add a 'load-on-demand'
+	   // option for it
+	   mesh1.visible = true;
+	   threeD.add(mesh1); 
+	   
+	   var mesh2 = new X.mesh();
+	   mesh2.file = 'http://x.babymri.org/?avf.vtk';
+	   mesh2.color = [0.7, 0, 0];
+	   // and also set the visibility to false, since we add a 'load-on-demand'
+	   // option for it
+	   mesh2.visible = false;
+	   threeD.add(mesh2); 
             
 
             // start the loading/rendering
@@ -268,6 +286,9 @@
 
                   volume.labelmap.opacity = ui.value/100;
                   volume.modified();
+                  sliceX.render();
+                  sliceY.render();
+                  sliceZ.render();
                   threeD.render();
                   
                 }
@@ -281,25 +302,66 @@
                 value: 100
               });
               jQuery("#opacity-mesh").css('width', '160px');
+              
+	      jQuery("#opacity-scalar").slider({
+                min: 0,
+                max: 100,
+                value: 100
+              });
+              jQuery("#opacity-scalar").css('width', '160px');
                             
               jQuery("#volumepin").button();
               jQuery("#meshpin").button();
               jQuery("#fiberspin").button();
               
 	      jQuery("#visibility-mesh").button();
+	      jQuery('#visibility-mesh').click(function() {
+                
+                var _checked = jQuery(this).is(':checked');
+               
+	        eval(jQuery("#meshname").val() + ".visible = " + _checked);
+	        eval(jQuery("#meshname").val() + ".modified()");
+
+                threeD.render();
+              });
+
               
               jQuery("#volumerendering").button();
               jQuery("#volumerendering").css('font-size', '10px');
               jQuery('#volumerendering').click(function() {
                 
                 var _checked = jQuery('#volumerendering').is(':checked');
-                
+               
+	        if(_checked){
+	        jQuery("#volumerendering-visible").show();
+		}
+		else{
+	        jQuery("#volumerendering-visible").hide();
+		}
+
                 volume.volumeRendering = _checked;
                 volume.modified();
                 threeD.render();
                 
               });
+	      jQuery("#volumerendering-visible").hide();
               
+              jQuery("#meshname").change(function() {
+                  // update GUI with mesh info
+
+		  // get color
+		  var color = eval(jQuery(this).val() + ".color");
+		  
+		  // get opacity
+		  var opacity = eval(jQuery(this).val() + ".opacity");
+
+		  // get visibility
+		  var visible = eval(jQuery(this).val() + ".visible");
+		  jQuery("#visibility-mesh").prop("checked", visible);
+
+		  jQuery('#visibility-mesh').button("refresh");
+              });
+
               
               // customize slider look and feeld
               jQuery('.ui-slider').height(5);
@@ -386,7 +448,7 @@ body {
 	position: relative;
 	right: 0px;
 	width: 10px;
-	height: 50px;
+	height: 70px;
 	margin-top: 0px;
 	font-size: smaller;
 	-moz-transform: rotate(90deg);  /* FF3.5+ */
@@ -401,8 +463,24 @@ body {
 
 .content {
         float: left;
-	padding-left: 20px;
+	padding-left: 15px;
 	line-height: 20px;
+}
+
+.pin {
+        float: right;
+	position: relative;
+	margin-top: 0px;
+	right: 0px;
+	top: 0px;
+}
+
+.switch {
+        float: left;
+	position: relative;
+	margin-top: 0px;
+	right: 0px;
+	top: 0px;
 }
 
 .credits {
@@ -417,53 +495,86 @@ body {
 <body>
 	<ul id="navigation">
 		<li id="volume"><a class='menu'>
+				<div class="pin">
+					<input type="checkbox" id="volumepin"/><label for="volumepin">P</label>
+			        </div>
 				<div class="content">
-					<input type="checkbox" id="volumepin"/><label for="volumepin">PIN</label>
 					<input type="checkbox" id="volumerendering" /><label
 						for="volumerendering">VOLUMERENDERING</label>
+					<div id="volumerendering-visible">
+                                        <div class="label">OPACITY</div>
+                                        <div id="opacity-volume"></div>					
+                                        </div>
 
 					<div class="label">THRESHOLD</div>
 					<div id="threshold-volume"></div>
-					
-                                        <div class="label">OPACITY</div>
-                                        <div id="opacity-volume"></div>					
-                                        
+
                                         <div class="label">LABEL NAME
 					<select id="labelmapname">
                                         <option value="Default">Default</option>
 	                                <option value="None">None</option>
 	                                </select>
 					</div>
-                                        <div class="label">LABEL OPACITY</div>
-                                        <div id="opacity-labelmap"></div>					
 
+                                        <div class="label">LABEL OPACITY</div>
+					<div id="opacity-labelmap"></div>					
+                                   
+				        <div class="label">COLOR TABLE
+					<select id="colortablename">
+                                        <option value="Default">Default</option>
+	                                <option value="None">None</option>
+	                                </select>
+					</div>
 				</div>
-				<div class="caption">VOLUME</div>
-				</a></li>
+				<div class="caption">VOLUME
+				</div>
+		</a></li>
 		<li id="mesh"><a class='menu'>
+				<div class="pin">
+					<input type="checkbox" id="meshpin"/><label for="meshpin">P</label>
+                                </div>
 		                <div class="content">
-					<input type="checkbox" id="meshpin"/><label for="meshpin">PIN</label>
-                                        <div class="label">NAME
+					<div class="label">NAME
 					<select id="meshname">
-                                        <option value="left.vtk">left</option>
-	                                <option value="right.vtk">right</option>
+                                        <option value="mesh1">mesh1</option>
+	                                <option value="mesh2">mesh2</option>
 	                                </select>
 					</div>
 					
+					<div>
 					<input type="checkbox" id="visibility-mesh" /><label
 						for="visibility-mesh">VISIBILITY</label>
-                                        
+					</div>
+
 					<div class="label">COLOR
                                         <input id="your_input" type="text" name="someName" style="width:50px"/>
                                         </div>
 
 					<div class="label">OPACITY</div>
                                         <div id="opacity-mesh"></div>					
+                                        
+					<div class="label">SCALAR
+					<select id=scalarname">
+                                        <option value="None">None</option>
+                                        <option value="02">02</option>
+	                                <option value="03">03</option>
+	                                </select>
+					</div>
+					
+					<div class="label">OPACITY</div>
+                                        <div id="opacity-scalar"></div>					
 				</div>
-		                <div class="caption">MESH</div>
+		                <div class="caption">MESH
+				</div>
 		</a></li>
-		<li id="fibers"><a class='menu'><div class="caption">FIBERS</div>
-					<input type="checkbox" id="fiberspin"/><label for="fiberspin">PIN</label>
+		<li id="fibers"><a class='menu'>
+				<div class="pin">
+		                        <input type="checkbox" id="fiberspin"/><label for="fiberspin">P</label>
+				</div>
+				<div class="content">
+	                	</div>
+		                <div class="caption">FIBERS
+				</div>
 		</a> </span></li>
 	</ul>
 	<div id="3d"
