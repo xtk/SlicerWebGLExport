@@ -11,7 +11,7 @@
 	src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
 <script type="text/javascript"
 	src="http://code.jquery.com/ui/1.8.21/jquery-ui.min.js"></script>
-<script type="text/javascript" src="/Users/nicolas/gitroot/SlicerWebGLExport/template/modcoder_excolor/jquery.modcoder.excolor.js"></script>
+<script type="text/javascript" src="/Users/nicolas/gitroot/SlicerWebGLExport/template/jscolor/jscolor.js "></script>
 <script type="text/javascript" src="http://get.goXTK.com/xtk_edge.js"></script>
 
 <script type="text/javascript">
@@ -68,15 +68,15 @@
     jQuery("#red_slider").slider();
     jQuery("#green_slider").slider();
    
-    jQuery("#your_input").modcoder_excolor({
-      z_index : 99999999,
-      hue_slider : 2,
-      show_color_on_border : true,
-      callback_on_ok : function() {
+    //jQuery("#your_input").modcoder_excolor({
+    //  z_index : 99999999,
+    //  hue_slider : 2,
+    //  show_color_on_border : true,
+    //  callback_on_ok : function() {
       // You can insert your code here
-      alert(jQuery("#meshname").val());
-      }
-    });
+    //  alert(jQuery("#meshname").val());
+    //  }
+    //});
 
     jQuery("#labelmapname").change(function() {
       //alert(jQuery(this).val());
@@ -172,7 +172,7 @@
            // load 2 meshes
 	   var mesh1 = new X.mesh();
 	   mesh1.file = 'http://x.babymri.org/?avf.vtk';
-	   mesh1.color = [0.7, 0, 0];
+	   mesh1.color = [1, 0, 0];
 	   // and also set the visibility to false, since we add a 'load-on-demand'
 	   // option for it
 	   mesh1.visible = true;
@@ -180,7 +180,7 @@
 	   
 	   var mesh2 = new X.mesh();
 	   mesh2.file = 'http://x.babymri.org/?avf.vtk';
-	   mesh2.color = [0, 0.7, 0];
+	   mesh2.color = [0, 1, 0];
 	   // and also set the visibility to false, since we add a 'load-on-demand'
 	   // option for it
 	   mesh2.visible = false;
@@ -351,9 +351,10 @@
 
 		  // get color
 		  var color = eval(jQuery(this).val() + ".color");
-		  
+		  //set value
+
 		  // get opacity
-		  var opacity = eval(jQuery(this).val() + ".opacity");
+		  //var opacity = eval(jQuery(this).val() + ".opacity");
 
 		  // get visibility
 		  var visible = eval(jQuery(this).val() + ".visible");
@@ -542,12 +543,12 @@ body {
 					</div>
 					
 					<div>
-					<input type="checkbox" id="visibility-mesh" /><label
+					<input type="checkbox" id="visibility-mesh" checked/><label
 						for="visibility-mesh">VISIBILITY</label>
 					</div>
 
 					<div class="label">COLOR
-                                        <input id="your_input" type="text" name="someName" style="width:50px"/>
+                                        <input class="color" type="text" value="ff0000"/>
                                         </div>
 
 					<div class="label">OPACITY</div>
