@@ -273,7 +273,6 @@ class WebGLExportWidget:
       output = self.logic.export( self.__captionCombobox.currentIndex, self.__copyCheckbox.checked, outputDir )
     except Exception as e:
       # maybe the scene was not saved?
-      qt.QMessageBox.warning( None, 'Error', e)
       qt.QMessageBox.warning( None, 'Error', 'Please make sure the scene was saved before attempting to export to WebGL!' )
       self.__exportButton.text = "Export to WebGL"
       return
