@@ -17,7 +17,7 @@ try:
   import SocketServer
   import multiprocessing as m
 except:
-  useWebserver = False  
+  useWebserver = False
 
 
 # this module uses the following from http://www.quesucede.com/page/show/id/python_3_tree_implementation
@@ -273,6 +273,7 @@ class WebGLExportWidget:
       output = self.logic.export( self.__captionCombobox.currentIndex, self.__copyCheckbox.checked, outputDir )
     except Exception as e:
       # maybe the scene was not saved?
+      qt.QMessageBox.warning( None, 'Error', e)
       qt.QMessageBox.warning( None, 'Error', 'Please make sure the scene was saved before attempting to export to WebGL!' )
       self.__exportButton.text = "Export to WebGL"
       return
@@ -346,7 +347,7 @@ class WebGLExportLogic:
 <!-- WebGL Export for 3D Slicer4 powered by XTK -- http://goXTK.com -->
   <head>
     <title>WebGL Export</title>
-    <script type="text/javascript" src="http://get.goXTK.com/xtk.js"></script>
+    <script type="text/javascript" src="http://get.goxtk.com/xtk_release_9.js"></script>
     <script type="text/javascript">
       var run = function() {
 
@@ -372,13 +373,13 @@ class WebGLExportLogic:
     """
     Grab some Slicer environment values like the camera position etc. and configure the X.renderers
     """
-    init = ' ' * 8 + "r%s = new X.renderer('r%s');" + '\n' + ' ' * 8 + 'r%s.init();' + '\n'
+    init = ' ' * 8 + "r%s = new X.renderer3D();" + '\n' + ' ' * 8 + "r%s.container = 'r%s';\n"+ ' ' * 8 + 'r%s.init();' + '\n'
     configuredInit = ''
     div = ' ' * 8 + '<div id="r%s" style="background-color: %s; width: %s; height: %s;%s"></div>' + '\n'
     configuredDiv = ''
     render = ' ' * 8 + '%sr%s.add(scene);' + '\n'
-    render += ' ' * 8 + 'r%s.camera().setPosition%s;' + '\n'
-    render += ' ' * 8 + 'r%s.camera().setUp%s;' + '\n'
+    render += ' ' * 8 + 'r%s.camera.position = %s;' + '\n'
+    render += ' ' * 8 + 'r%s.camera.up = %s;' + '\n'
     render += ' ' * 8 + 'r%s.render();%s' + '\n\n'
     configuredRender = ''
 
@@ -427,8 +428,8 @@ class WebGLExportLogic:
         raise Exception( 'Something went terribly wrong..' )
 
       camera = cameraNode.GetCamera()
-      cameraPosition = str( camera.GetPosition() )
-      cameraUp = str( camera.GetViewUp() )
+      cameraPosition = str( list(camera.GetPosition()) )
+      cameraUp = str( list(camera.GetViewUp()) )
 
       width = '100%'
       height = '100%'
@@ -460,7 +461,7 @@ class WebGLExportLogic:
             end = ' ' * 8 + '};'
             float += 'position:absolute;right:0;bottom:0;'
 
-      configuredInit += init % ( r, r, r )
+      configuredInit += init % ( r, r, r, r )
       configuredRender += render % ( begin, r, r, cameraPosition, r, cameraUp, r, end )
       configuredDiv += div % ( r, bgColor, width, height, float )
 
@@ -552,7 +553,7 @@ class WebGLExportLogic:
     queue = self.__tree[position].fpointer
     mrmlId = self.__tree[position].identifier
 
-    output = ' ' * 8 + mrmlId + ' = new X.object();\n'
+    output = ' ' * 8 + mrmlId + ' = new X.mesh();\n'
 
     if not level == _ROOT:
 
@@ -571,7 +572,7 @@ class WebGLExportLogic:
           raise Exception( 'Scene not saved!' )
 
         d = n.GetDisplayNode()
-        color = str( d.GetColor() )
+        color = str( list(d.GetColor()) )
         opacity = str( d.GetOpacity() )
         visible = str( bool( d.GetVisibility() ) ).lower()
 
@@ -580,21 +581,21 @@ class WebGLExportLogic:
           shutil.copy( file, os.path.join( self.__outputDir, fileName ) )
           file = fileName
 
-        output += ' ' * 8 + mrmlId + '.load(\'' + file + '\');\n'
-        output += ' ' * 8 + mrmlId + '.setColor' + color + ';\n'
-        output += ' ' * 8 + mrmlId + '.setOpacity(' + opacity + ');\n'
-        output += ' ' * 8 + mrmlId + '.setVisible(' + visible + ');\n'
+        output += ' ' * 8 + mrmlId + '.file = "' + file + '";\n'
+        output += ' ' * 8 + mrmlId + '.color = ' + color + ';\n'
+        output += ' ' * 8 + mrmlId + '.opacity = ' + opacity + ';\n'
+        output += ' ' * 8 + mrmlId + '.visible = ' + visible + ';\n'
 
         if self.__captionMode == 1:
           # From Model Name
-          output += ' ' * 8 + mrmlId + '.setCaption(\'' + n.GetName() + '\');\n'
+          output += ' ' * 8 + mrmlId + '.caption = "' + n.GetName() + '";\n'
         elif self.__captionMode == 2:
           # From Parent
           parentNode = slicer.util.getNode( parent )
           if parentNode:
-            output += ' ' * 8 + mrmlId + '.setCaption(\'' + parentNode.GetName() + '\');\n'
+            output += ' ' * 8 + mrmlId + '.caption = "' + parentNode.GetName() + '";\n'
 
-      output += ' ' * 8 + parent + '.children().push(' + mrmlId + ');\n\n'
+      output += ' ' * 8 + parent + '.children.push(' + mrmlId + ');\n\n'
 
     level += 1
     for element in queue:
